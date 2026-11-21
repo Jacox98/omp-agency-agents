@@ -45,3 +45,8 @@ Choose **Refresh catalog from GitHub** in the destination menu to fetch the late
 Run `bun install --frozen-lockfile`, `bun run typecheck` and `bun test` from the checkout. The tests cover catalog parsing, caching, picker controls and installation.
 
 The plugin code is distributed under the [MIT License](LICENSE). The upstream license notice is embedded in each installed agent file.
+
+## Credits
+
+- [Agency Agents](https://github.com/msitarzewski/agency-agents), maintained by msitarzewski and its contributors, provides the agent prompts, divisions, and NEXUS team rosters. The prompts carry the upstream MIT notice, © 2025 AgentLand Contributors.
+- [Oh My Pi (omp)](https://github.com/can1357/oh-my-pi) provides the extension API, terminal UI components, and agent runtime used by this plugin.
