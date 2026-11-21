@@ -1,0 +1,25 @@
+{
+  "name": "omp-agency-agents",
+  "version": "0.1.0",
+  "description": "Browse the Agency Agents catalog and install selected agents or NEXUS teams from the omp terminal UI.",
+  "license": "MIT",
+  "keywords": ["omp", "omp-plugin", "agency-agents", "subagents", "tui"],
+  "type": "module",
+  "omp": {
+    "description": "Browse and install Agency Agents with /agency-agents.",
+    "extensions": ["./src/index.ts"]
+  },
+  "files": ["src"],
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit --strict --moduleResolution bundler --module preserve --target esnext --skipLibCheck src/index.ts",
+    "prepublishOnly": "bun run typecheck && bun test"
+  },
+  "devDependencies": {
+    "@oh-my-pi/pi-coding-agent": "18.4.5",
+    "@oh-my-pi/pi-tui": "18.4.5",
+    "@oh-my-pi/pi-utils": "18.4.5",
+    "@types/node": "26.6.6",
+    "typescript": "7.0.2"
+  }
+}
