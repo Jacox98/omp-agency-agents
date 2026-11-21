@@ -6,6 +6,7 @@ import { installAgents } from "./install";
 import { loadCatalog } from "./load";
 import { createPicker } from "./picker";
 import { singleLine } from "./text";
+import { pluginUpdateMessage } from "./update";
 
 async function installedIds(dir: string): Promise<Set<string>> {
   const ids = new Set<string>();
@@ -28,15 +29,23 @@ export default function (pi: ExtensionAPI): void {
       const global = resolve(join(getAgentDir(), "agents"));
       const cacheDir = join(getAgentDir(), "cache", "agency-agents");
       const refresh = "Refresh catalog from GitHub";
-      const options = [`Current project — ${singleLine(project)}`, `Global user — ${singleLine(global)}`, refresh];
+      const updates = "Check for plugin updates";
+      const options = [`Current project — ${singleLine(project)}`, `Global user — ${singleLine(global)}`, refresh, updates];
       let choice: string | undefined;
       do {
-        choice = await ctx.ui.select("Agency Agents — choose an installation destination or refresh the catalog", options);
+        choice = await ctx.ui.select("Agency Agents — choose a destination or an action", options);
         if (!choice) return;
+        if (choice === updates) {
+          try {
+            ctx.ui.notify(await pluginUpdateMessage(), "info");
+          } catch (error) {
+            ctx.ui.notify(`Could not check for plugin updates — ${singleLine(String(error))}`, "warning");
+          }
+        }
         if (choice === refresh && await loadCatalog(pi, ctx.ui, cacheDir, true)) {
           ctx.ui.notify("Local catalog updated from GitHub.", "info");
         }
-      } while (choice === refresh);
+      } while (choice === refresh || choice === updates);
       const destination = choice === options[0] ? "project" : "global";
       const dir = destination === "project" ? project : global;
       const catalog = await loadCatalog(pi, ctx.ui, cacheDir);

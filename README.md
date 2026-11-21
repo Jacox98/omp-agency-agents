@@ -40,6 +40,8 @@ The first catalog download requires `git` on your `PATH` and network access to G
 
 Choose **Refresh catalog from GitHub** in the destination menu to fetch the latest prompts and team rosters. A failed or canceled download preserves the previous snapshot. Refreshing updates the catalog only. Installed Markdown files keep their original prompt body, the upstream license in frontmatter comments, and any local edits.
 
+Choose **Check for plugin updates** to compare the installed plugin version with its latest stable GitHub release and see the install command when an update is available.
+
 ## Development
 
 Run `bun install --frozen-lockfile`, `bun run typecheck` and `bun test` from the checkout. The tests cover catalog parsing, caching, picker controls and installation.
