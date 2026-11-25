@@ -2,6 +2,10 @@
 
 `omp-agency-agents` adds `/agency-agents` to the omp terminal UI. Use it to preview prompts and install individual agents or a whole team from the [Agency Agents catalog](https://github.com/msitarzewski/agency-agents).
 
+## Requirements
+
+omp 19.2.0 or later. Version 0.1.3 and earlier fail to load on omp 19.2 because that release removed the old pi-tui components.
+
 ## Install the plugin
 
 Install the published package from npm through omp.

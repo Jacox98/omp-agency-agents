@@ -3,8 +3,24 @@ import { existsSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { KeybindingsManager } from "@oh-my-pi/pi-coding-agent/config/keybindings/keybindings";
+import { decodeInput } from "@oh-my-pi/pi-tui/driver/input/decoder";
 import type { AgencyAgent, Runbook } from "../src/catalog";
-import { createPicker } from "../src/picker";
+import { createPicker, type PickerOptions } from "../src/picker";
+import type { KeyView } from "../src/view";
+
+/** Drives a key view with raw terminal bytes, decoded as the host decodes them. */
+function terminal(view: KeyView) {
+	return {
+		render: (width: number) => view.render(width),
+		handleInput(raw: string) {
+			for (const event of decodeInput(raw, { kitty: true })) {
+				if (event.type === "key") view.handleKey(event.key);
+				else if (event.type === "paste") view.handlePaste?.(event.paste.text);
+			}
+		},
+	};
+}
 
 const ENTER = "\r";
 const TAB = "\t";
@@ -69,7 +85,10 @@ const RUNBOOKS: Runbook[] = [{
 
 test("installed agents stay visible and previewable while bulk selection skips them", () => {
 	let submitted: string[] | undefined;
-	const picker = createPicker(AGENTS, "/project", () => {}, ids => { submitted = ids; }, () => 24, new Set([FRONTEND]));
+	const picker = terminal(createPicker({
+		agents: AGENTS, dir: "/project", done: ids => { submitted = ids; }, keys: KeybindingsManager.inMemory(),
+		installed: new Set([FRONTEND]),
+	}));
 	const screen = picker.render(120).join("\n");
 	expect(screen).toContain("[Installed] Frontend Developer");
 	expect(screen).toContain("Prompt line 1");
@@ -95,16 +114,18 @@ async function makeTarget(): Promise<string> {
 
 function setup(
 	dir: string, agents: readonly AgencyAgent[] = AGENTS, getRows?: () => number,
-	installed?: ReadonlySet<string>, scope?: Parameters<typeof createPicker>[6],
-	runbooks?: readonly Runbook[],
+	installed?: ReadonlySet<string>, scope?: PickerOptions["scope"],
+	runbooks?: readonly Runbook[], keys = KeybindingsManager.inMemory(),
 ) {
 	let calls = 0;
 	let ids: string[] | undefined;
-	let renders = 0;
-	const picker = createPicker(agents, dir, () => { renders++; }, value => {
-		calls++;
-		ids = value;
-	}, getRows, installed, scope, runbooks);
+	const picker = terminal(createPicker({
+		agents, dir, keys, getRows, installed, scope, runbooks,
+		done: value => {
+			calls++;
+			ids = value;
+		},
+	}));
 	const done = () => ({ calls, ids });
 	const type = (text: string) => {
 		for (const char of text) picker.handleInput(char);
@@ -126,8 +147,32 @@ function setup(
 		const view = screen();
 		return agents.filter(agent => view.includes(`[x] ${agent.name}`)).map(agent => agent.id);
 	};
-	return { picker, type, erase, chooseGroup, screen, checkedCount, markedIds, done, renders: () => renders };
+	return { picker, type, erase, chooseGroup, screen, checkedCount, markedIds, done };
 }
+
+test("follows the user's remapped selection keys", () => {
+	const keys = KeybindingsManager.inMemory({ "tui.select.down": "ctrl+n", "tui.select.cancel": "ctrl+g" });
+	const ui = setup("/agents", AGENTS, undefined, undefined, undefined, undefined, keys);
+	ui.picker.handleInput("\x0e");
+	ui.picker.handleInput(TAB);
+	expect(ui.markedIds()).toEqual([GODOT]);
+	ui.picker.handleInput(ESCAPE);
+	expect(ui.done().calls).toBe(0);
+	ui.picker.handleInput("\x07");
+	expect(ui.done()).toEqual({ calls: 1, ids: undefined });
+});
+
+test("Kitty keyboard keys and bracketed paste reach the search", () => {
+	const ui = setup("/agents");
+	ui.picker.handleInput("\x1b[103u\x1b[111u");
+	expect(ui.screen()).toContain("Search: go");
+	ui.picker.handleInput("\x1b[200~dot\nignored\x1b[201~");
+	expect(ui.screen()).toContain("Search: godot ignored");
+	ui.picker.handleInput("\x1b[117;5u");
+	ui.picker.handleInput("\x1b[200~godot\x1b[201~");
+	ui.picker.handleInput("\x1b[9u\x1b[13u");
+	expect(ui.done().ids).toEqual([GODOT]);
+});
 
 test("can select a runbook team containing an unpaired Unicode surrogate", () => {
 	const runbooks = [{ slug: "launch", title: "Product Launch", roster: [{ group: "Remote\uD800 Team", agents: [GODOT] }] }];
@@ -257,7 +302,6 @@ describe("createPicker", () => {
 
 		ui.picker.handleInput(TAB);
 		expect(ui.checkedCount()).toBe(1);
-		expect(ui.renders()).toBeGreaterThan(0);
 
 		ui.erase("frontend".length);
 		expect(ui.checkedCount()).toBe(1);

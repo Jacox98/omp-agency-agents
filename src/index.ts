@@ -7,6 +7,7 @@ import { loadCatalog } from "./load";
 import { createPicker } from "./picker";
 import { singleLine } from "./text";
 import { pluginUpdateMessage } from "./update";
+import { mountKeyView } from "./view";
 
 async function installedIds(dir: string): Promise<Set<string>> {
   const ids = new Set<string>();
@@ -66,9 +67,11 @@ export default function (pi: ExtensionAPI): void {
         return new Set<string>();
       });
       const ids = await ctx.ui.custom<string[] | undefined>(
-        (tui, _theme, _keys, done) => createPicker(catalog.agents, dir, () => tui.requestRender(), done,
-          () => tui.terminal.rows, installed, { destination, otherInstalled }, catalog.runbooks),
-        { overlay: true, overlayOptions: { fullscreen: true, width: "100%", maxHeight: "100%", margin: 0, mouseTracking: false } },
+        (ui, theme, keys, done) => mountKeyView(() => createPicker({
+          agents: catalog.agents, dir, done, keys, getRows: () => ui.size().rows, installed,
+          scope: { destination, otherInstalled }, runbooks: catalog.runbooks, theme,
+        })),
+        { overlay: true, fullscreen: true },
       );
       if (!ids) return;
       const selected = new Set(ids);
